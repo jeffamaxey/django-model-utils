@@ -29,7 +29,7 @@ def run(command):
 
     from django.core.management import call_command
 
-    call_command('%smessages' % command)
+    call_command(f'{command}messages')
 
 
 if __name__ == '__main__':

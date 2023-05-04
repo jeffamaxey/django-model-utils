@@ -88,8 +88,7 @@ class Choices:
                         store((choice[0], choice[0], choice[1]))
                 else:
                     raise ValueError(
-                        "Choices can't take a list of length %s, only 2 or 3"
-                        % len(choice)
+                        f"Choices can't take a list of length {len(choice)}, only 2 or 3"
                     )
             else:
                 store((choice, choice, choice))
@@ -113,10 +112,7 @@ class Choices:
         return self._display_map[key]
 
     def __add__(self, other):
-        if isinstance(other, self.__class__):
-            other = other._triples
-        else:
-            other = list(other)
+        other = other._triples if isinstance(other, self.__class__) else list(other)
         return Choices(*(self._triples + other))
 
     def __radd__(self, other):
@@ -130,10 +126,7 @@ class Choices:
         return False
 
     def __repr__(self):
-        return '{}({})'.format(
-            self.__class__.__name__,
-            ', '.join("%s" % repr(i) for i in self._triples)
-        )
+        return f"""{self.__class__.__name__}({', '.join(f"{repr(i)}" for i in self._triples)})"""
 
     def __contains__(self, item):
         return item in self._db_values
@@ -146,8 +139,7 @@ class Choices:
 
         if not identifiers.issuperset(new_identifiers):
             raise ValueError(
-                'The following identifiers are not present: %s' %
-                identifiers.symmetric_difference(new_identifiers),
+                f'The following identifiers are not present: {identifiers.symmetric_difference(new_identifiers)}'
             )
 
         return self.__class__(*[

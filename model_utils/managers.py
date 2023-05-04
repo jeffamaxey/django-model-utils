@@ -74,10 +74,7 @@ class InheritanceQuerySetMixin:
 
         # workaround https://code.djangoproject.com/ticket/16855
         previous_select_related = self.query.select_related
-        if subclasses:
-            new_qs = self.select_related(*subclasses)
-        else:
-            new_qs = self
+        new_qs = self.select_related(*subclasses) if subclasses else self
         previous_is_dict = isinstance(previous_select_related, dict)
         new_is_dict = isinstance(new_qs.query.select_related, dict)
         if previous_is_dict and new_is_dict:
@@ -86,11 +83,11 @@ class InheritanceQuerySetMixin:
         return new_qs
 
     def _chain(self, **kwargs):
-        update = {}
-        for name in ['subclasses', '_annotated']:
-            if hasattr(self, name):
-                update[name] = getattr(self, name)
-
+        update = {
+            name: getattr(self, name)
+            for name in ['subclasses', '_annotated']
+            if hasattr(self, name)
+        }
         chained = super()._chain(**kwargs)
         chained.__dict__.update(update)
         return chained
@@ -130,10 +127,12 @@ class InheritanceQuerySetMixin:
             levels -= 1
         for rel in rels:
             if levels or levels is None:
-                for subclass in self._get_subclasses_recurse(
-                        rel.field.model, levels=levels):
-                    subclasses.append(
-                        rel.get_accessor_name() + LOOKUP_SEP + subclass)
+                subclasses.extend(
+                    rel.get_accessor_name() + LOOKUP_SEP + subclass
+                    for subclass in self._get_subclasses_recurse(
+                        rel.field.model, levels=levels
+                    )
+                )
             subclasses.append(rel.get_accessor_name())
         return subclasses
 
@@ -170,11 +169,7 @@ class InheritanceQuerySetMixin:
             node = getattr(obj, rel)
         except ObjectDoesNotExist:
             return None
-        if s:
-            child = self._get_sub_obj_recurse(node, s)
-            return child
-        else:
-            return node
+        return self._get_sub_obj_recurse(node, s) if s else node
 
     def get_subclass(self, *args, **kwargs):
         return self.select_subclasses().get(*args, **kwargs)
@@ -185,25 +180,17 @@ class InheritanceQuerySet(InheritanceQuerySetMixin, QuerySet):
         """
         Fetch only objects that are instances of the provided model(s).
         """
-        # If we aren't already selecting the subclasess, we need
-        # to in order to get this to work.
-
-        # How can we tell if we are not selecting subclasses?
-
-        # Is it safe to just apply .select_subclasses(*models)?
-
-        # Due to https://code.djangoproject.com/ticket/16572, we
-        # can't really do this for anything other than children (ie,
-        # no grandchildren+).
-        where_queries = []
-        for model in models:
-            where_queries.append('(' + ' AND '.join([
-                '"{}"."{}" IS NOT NULL'.format(
-                    model._meta.db_table,
-                    field.attname,  # Should this be something else?
-                ) for field in model._meta.parents.values()
-            ]) + ')')
-
+        where_queries = [
+            '('
+            + ' AND '.join(
+                [
+                    f'"{model._meta.db_table}"."{field.attname}" IS NOT NULL'
+                    for field in model._meta.parents.values()
+                ]
+            )
+            + ')'
+            for model in models
+        ]
         return self.select_subclasses(*models).extra(where=[' OR '.join(where_queries)])
 
 
@@ -230,10 +217,7 @@ class InheritanceManager(InheritanceManagerMixin, models.Manager):
 class QueryManagerMixin:
 
     def __init__(self, *args, **kwargs):
-        if args:
-            self._q = args[0]
-        else:
-            self._q = models.Q(**kwargs)
+        self._q = args[0] if args else models.Q(**kwargs)
         self._order_by = None
         super().__init__()
 
@@ -243,9 +227,7 @@ class QueryManagerMixin:
 
     def get_queryset(self):
         qs = super().get_queryset().filter(self._q)
-        if self._order_by is not None:
-            return qs.order_by(*self._order_by)
-        return qs
+        return qs.order_by(*self._order_by) if self._order_by is not None else qs
 
 
 class QueryManager(QueryManagerMixin, models.Manager):
@@ -313,11 +295,7 @@ class JoinQueryset(models.QuerySet):
         query, params = query.sql_with_params()
 
         # Put additional quotes around string.
-        params = [
-            '\'{}\''.format(p)
-            if isinstance(p, str) else p
-            for p in params
-        ]
+        params = [f"\'{p}\'" if isinstance(p, str) else p for p in params]
 
         # Cast list of parameters to tuple because I got
         # "not enough format characters" otherwise.
@@ -344,7 +322,7 @@ class JoinQueryset(models.QuerySet):
                 if getattr(fk, 'related_model', None) == self.model
             ]
             fk = fk[0] if fk else None
-            model_set = '{}_set'.format(self.model.__name__.lower())
+            model_set = f'{self.model.__name__.lower()}_set'
             key = fk or getattr(qs.model, model_set, None)
 
             if not key:

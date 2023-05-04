@@ -37,7 +37,7 @@ class SplitFieldTests(TestCase):
         new_text = 'different\n\n<!-- split -->\n\nother'
         self.post.body = new_text
         self.post.save()
-        self.assertEqual(str(self.post.body), new_text)
+        self.assertEqual(self.post.body, new_text)
 
     def test_assign_to_content(self):
         new_text = 'different\n\n<!-- split -->\n\nother'

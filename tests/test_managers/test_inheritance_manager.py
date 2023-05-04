@@ -35,9 +35,7 @@ class InheritanceManagerTests(TestCase):
         self.assertEqual(set(self.get_manager().all()), children)
 
     def test_select_all_subclasses(self):
-        children = {self.child1, self.child2}
-        children.add(self.grandchild1)
-        children.add(self.grandchild1_2)
+        children = {self.child1, self.child2, self.grandchild1, self.grandchild1_2}
         self.assertEqual(
             set(self.get_manager().select_subclasses()), children)
 

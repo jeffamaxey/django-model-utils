@@ -87,7 +87,7 @@ class DescriptorWrapper:
         # Sentinel attribute to detect whether we are already trying to
         # set the attribute higher up the stack. This prevents infinite
         # recursion when retrieving deferred values from the database.
-        recursion_sentinel_attname = '_setting_' + self.field_name
+        recursion_sentinel_attname = f'_setting_{self.field_name}'
         already_setting = hasattr(instance, recursion_sentinel_attname)
 
         if initialized and was_deferred and not already_setting:
@@ -222,8 +222,7 @@ class FieldInstanceTracker:
     def current(self, fields=None):
         """Returns dict of current values for all tracked fields"""
         if fields is None:
-            deferred_fields = self.deferred_fields
-            if deferred_fields:
+            if deferred_fields := self.deferred_fields:
                 fields = [
                     field for field in self.fields
                     if field not in deferred_fields
@@ -235,13 +234,12 @@ class FieldInstanceTracker:
 
     def has_changed(self, field):
         """Returns ``True`` if field has changed from currently saved value"""
-        if field in self.fields:
-            # deferred fields haven't changed
-            if field in self.deferred_fields and field not in self.instance.__dict__:
-                return False
-            return self.previous(field) != self.get_field_value(field)
-        else:
-            raise FieldError('field "%s" not tracked' % field)
+        if field not in self.fields:
+            raise FieldError(f'field "{field}" not tracked')
+        # deferred fields haven't changed
+        if field in self.deferred_fields and field not in self.instance.__dict__:
+            return False
+        return self.previous(field) != self.get_field_value(field)
 
     def previous(self, field):
         """Returns currently saved value of given field"""
@@ -290,10 +288,10 @@ class FieldInstanceTracker:
             field_obj = self.instance.__class__.__dict__.get(field)
             if isinstance(field_obj, FileDescriptor):
                 field_tracker = FileDescriptorTracker(field_obj.field)
-                setattr(self.instance.__class__, field, field_tracker)
             else:
                 field_tracker = DeferredAttributeTracker(field)
-                setattr(self.instance.__class__, field, field_tracker)
+
+            setattr(self.instance.__class__, field, field_tracker)
 
 
 class FieldTracker:
@@ -313,9 +311,8 @@ class FieldTracker:
                     return f(obj, *args, **kwargs)
 
             return inner
-        if func is None:
-            return decorator
-        return decorator(func)
+
+        return decorator if func is None else decorator(func)
 
     def get_field_map(self, cls):
         """Returns dict mapping fields names to model attribute names"""
@@ -327,7 +324,7 @@ class FieldTracker:
 
     def contribute_to_class(self, cls, name):
         self.name = name
-        self.attname = '_%s' % name
+        self.attname = f'_{name}'
         models.signals.class_prepared.connect(self.finalize_class, sender=cls)
 
     def finalize_class(self, sender, **kwargs):
@@ -377,10 +374,7 @@ class FieldTracker:
         setattr(model, method, inner)
 
     def __get__(self, instance, owner):
-        if instance is None:
-            return self
-        else:
-            return getattr(instance, self.attname)
+        return self if instance is None else getattr(instance, self.attname)
 
 
 class ModelInstanceTracker(FieldInstanceTracker):
@@ -392,7 +386,7 @@ class ModelInstanceTracker(FieldInstanceTracker):
         elif field in self.saved_data:
             return self.previous(field) != self.get_field_value(field)
         else:
-            raise FieldError('field "%s" not tracked' % field)
+            raise FieldError(f'field "{field}" not tracked')
 
     def changed(self):
         """Returns dict of fields that changed since save (with old values)"""

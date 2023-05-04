@@ -77,9 +77,9 @@ class StatusField(models.CharField):
 
     def prepare_class(self, sender, **kwargs):
         if not sender._meta.abstract and self.check_for_status:
-            assert hasattr(sender, self.choices_name), \
-                "To use StatusField, the model '%s' must have a %s choices class attribute." \
-                % (sender.__name__, self.choices_name)
+            assert hasattr(
+                sender, self.choices_name
+            ), f"To use StatusField, the model '{sender.__name__}' must have a {self.choices_name} choices class attribute."
             self.choices = getattr(sender, self.choices_name)
             if not self.has_default():
                 self.default = tuple(getattr(sender, self.choices_name))[0][0]  # set first as default
@@ -110,8 +110,7 @@ class MonitorField(models.DateTimeField):
         kwargs.setdefault('default', now)
         monitor = kwargs.pop('monitor', None)
         if not monitor:
-            raise TypeError(
-                '%s requires a "monitor" argument' % self.__class__.__name__)
+            raise TypeError(f'{self.__class__.__name__} requires a "monitor" argument')
         self.monitor = monitor
         when = kwargs.pop('when', None)
         if when is not None:
@@ -120,7 +119,7 @@ class MonitorField(models.DateTimeField):
         super().__init__(*args, **kwargs)
 
     def contribute_to_class(self, cls, name):
-        self.monitor_attname = '_monitor_%s' % name
+        self.monitor_attname = f'_monitor_{name}'
         models.signals.post_init.connect(self._save_initial, sender=cls)
         super().contribute_to_class(cls, name)
 
@@ -137,10 +136,9 @@ class MonitorField(models.DateTimeField):
         value = now()
         previous = getattr(model_instance, self.monitor_attname, None)
         current = self.get_monitored_value(model_instance)
-        if previous != current:
-            if self.when is None or current in self.when:
-                setattr(model_instance, self.attname, value)
-                self._save_initial(model_instance.__class__, model_instance)
+        if previous != current and (self.when is None or current in self.when):
+            setattr(model_instance, self.attname, value)
+            self._save_initial(model_instance.__class__, model_instance)
         return super().pre_save(model_instance, add)
 
     def deconstruct(self):
@@ -158,7 +156,7 @@ SPLIT_DEFAULT_PARAGRAPHS = getattr(settings, 'SPLIT_DEFAULT_PARAGRAPHS', 2)
 
 
 def _excerpt_field_name(name):
-    return '_%s_excerpt' % name
+    return f'_{name}_excerpt'
 
 
 def get_excerpt(content):
@@ -346,9 +344,7 @@ class UrlsafeTokenField(models.CharField):
     def get_default(self):
         if self._factory is not None:
             return self._factory(self.max_length)
-        # generate a token of length x1.33 approx. trim up to max length
-        token = secrets.token_urlsafe(self.max_length)[:self.max_length]
-        return token
+        return secrets.token_urlsafe(self.max_length)[:self.max_length]
 
     def deconstruct(self):
         name, path, args, kwargs = super().deconstruct()

@@ -14,7 +14,7 @@ class JoinManagerTest(TestCase):
         JoinItemForeignKey.objects.create(weight=20)
 
     def test_self_join(self):
-        a_slice = BoxJoinModel.objects.all()[0:10]
+        a_slice = BoxJoinModel.objects.all()[:10]
         with self.assertNumQueries(1):
             result = a_slice.join()
         self.assertEqual(result.count(), 10)

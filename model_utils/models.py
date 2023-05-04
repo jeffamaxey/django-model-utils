@@ -31,8 +31,7 @@ class TimeStampedModel(models.Model):
         modified field is updated even if it is not given as
         a parameter to the update field argument.
         """
-        update_fields = kwargs.get('update_fields', None)
-        if update_fields:
+        if update_fields := kwargs.get('update_fields', None):
             kwargs['update_fields'] = set(update_fields).union({'modified'})
 
         super().save(*args, **kwargs)
@@ -152,11 +151,10 @@ class SoftDeletableModel(models.Model):
         Soft delete object (set its ``is_removed`` field to True).
         Actually delete object if setting ``soft`` to False.
         """
-        if soft:
-            self.is_removed = True
-            self.save(using=using)
-        else:
+        if not soft:
             return super().delete(using=using, *args, **kwargs)
+        self.is_removed = True
+        self.save(using=using)
 
 
 class UUIDModel(models.Model):
